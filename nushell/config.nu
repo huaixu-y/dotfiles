@@ -24,6 +24,7 @@ $env.config.show_banner = false
 
 # alias
 alias ft = fastfetch
+alias vim = nvim
 
 # cargo
 source "~/.cargo/env.nu"
