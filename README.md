@@ -15,7 +15,7 @@ tmux/tmux.conf           -> ~/.config/tmux/tmux.conf
 
 ## Tools
 
-- **Nushell** — primary shell. `config.nu` initializes the Starship prompt, sets Helix (`hx`) as the buffer editor, hides the banner, aliases `ft` to `fastfetch`, and sources `~/.cargo/env.nu`. `env.nu` sets `HELIX_RUNTIME` (`~/tools/helix/runtime`) and prepends `~/.kimi-code/bin` to `PATH`.
+- **Nushell** — primary shell. `config.nu` initializes the Starship prompt, sets Helix (`hx`) as the buffer editor, hides the banner, aliases `ft` to `fastfetch` and `vim` to `nvim`, and sources `~/.cargo/env.nu`. `env.nu` prepends `~/.kimi-code/bin` to `PATH`.
 - **tmux** — prefix `C-Space`, default shell `/usr/bin/nu`, mouse on, 1-based indexing, extended keys (CSI-u), `allow-passthrough` for Yazi image previews (Kitty protocol), Alt-hjkl pane navigation, vi copy mode piping to `wl-copy`, and `display-popup` bindings (`C-p` shell, `M` btop, `m` scratch session, `g` lazygit, `h` helix, `/` command menu) at 90% size.
 - **Helix** — `catppuccin_mocha` theme, relative line numbers, mouse disabled, cursor shapes per mode, soft-wrap enabled with the wrap indicator hidden.
 - **Neovim** (0.12+) — catppuccin theme (mocha) via the `catppuccin/nvim` plugin installed with the built-in `vim.pack`. LSP for Python (`pyright`), Rust (`rust_analyzer`) and C/C++ (`clangd`) via built-in `vim.lsp.config`/`vim.lsp.enable` (no `nvim-lspconfig`). Built-in auto-completion (`vim.lsp.completion`): triggers on server trigger characters and from the 2nd keyword character of a word; `Tab`/`S-Tab` cycle items, `Enter` confirms. Buffer-local LSP keybindings (`gd`, `gD`, `<leader>f`, `<leader>d`; leader is Space). Hybrid relative line numbers. Indentation: 4 spaces.
