@@ -13,7 +13,7 @@ nvim/init.lua            -> ~/.config/nvim/init.lua
 tmux/tmux.conf           -> ~/.config/tmux/tmux.conf
 ```
 
-There is currently **no install/bootstrap script**; deployment is manual (copy or symlink the files into `~/.config/`). The tmux config references `~/.config/tmux/tmux.conf` in its reload binding, confirming that layout.
+The `install.sh` bootstrap script symlinks each tool directory into `~/.config/` (idempotent; existing entries are backed up as `*.bak.<timestamp>` before linking). The tmux config references `~/.config/tmux/tmux.conf` in its reload binding, confirming that layout.
 
 ## Technology stack
 
@@ -36,7 +36,7 @@ Consistent theme choice across editors: **Catppuccin** (Mocha).
   - Helix: run `hx --health` to validate config and runtime paths.
   - Neovim: check Lua syntax with `nvim --headless -u NONE '+lua assert(loadfile("nvim/init.lua"))' +qa`; note the first real launch clones `vim.pack` plugins (needs network).
   - fastfetch: run `fastfetch` to validate the JSONC.
-- Deployment = copying/symlinking into `~/.config/`; do it manually per file.
+- Deployment = run `./install.sh` to symlink every tool directory into `~/.config/`, or copy/symlink manually per file.
 
 ## Conventions for editing
 
