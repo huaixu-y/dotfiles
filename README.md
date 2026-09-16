@@ -32,7 +32,13 @@ Editors share the **Catppuccin** (Mocha) theme.
 
 ## Installation
 
-There is no install/bootstrap script; deploy manually by copying or symlinking each file into `~/.config/`, e.g.:
+Run the bootstrap script to symlink every tool directory into `~/.config/` (idempotent; anything already at the destination is backed up as `*.bak.<timestamp>` first):
+
+```sh
+./install.sh
+```
+
+Or deploy manually, e.g.:
 
 ```sh
 ln -sf ~/.dotfile/helix/config.toml ~/.config/helix/config.toml
