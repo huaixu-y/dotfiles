@@ -14,9 +14,6 @@
 # You can remove these comments if you want or leave
 # them for future reference.
 
-# kimi-code
-$env.PATH = ($env.PATH | prepend ($nu.home-dir | path join ".kimi-code" "bin"))
-
 # default editor (only when installed, so tools keep their own fallback)
 if (which nvim | is-not-empty) {
     $env.EDITOR = "nvim"
