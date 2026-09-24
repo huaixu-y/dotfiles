@@ -52,29 +52,34 @@ vim.lsp.enable({ "pyright", "rust_analyzer", "clangd" })
 -- Auto-completion while typing (built-in LSP completion, autotrigger)
 -- plus buffer-local LSP keybindings
 vim.opt.completeopt = { "menuone", "noselect", "popup" }
+local completion_augroup = vim.api.nvim_create_augroup("dotfiles.lsp_completion", { clear = true })
 vim.api.nvim_create_autocmd("LspAttach", {
   callback = function(args)
     local client = vim.lsp.get_client_by_id(args.data.client_id)
     if client and client:supports_method("textDocument/completion") then
       vim.lsp.completion.enable(true, client.id, args.buf, { autotrigger = true })
 
-      -- Also trigger completion from the 2nd keyword character of a word
-      vim.api.nvim_create_autocmd("InsertCharPre", {
-        buffer = args.buf,
-        callback = function()
-          if vim.fn.pumvisible() ~= 0 then
-            return
-          end
-          if not vim.v.char:match("[%w_]") then
-            return
-          end
-          local col = vim.fn.col(".")
-          local prev = col >= 2 and vim.api.nvim_get_current_line():sub(col - 1, col - 1) or ""
-          if prev:match("[%w_]") then
-            vim.lsp.completion.get()
-          end
-        end,
-      })
+      -- Also trigger completion from the 2nd keyword character of a word.
+      -- Register only once per buffer, even if multiple clients attach.
+      if #vim.api.nvim_get_autocmds({ group = completion_augroup, buffer = args.buf }) == 0 then
+        vim.api.nvim_create_autocmd("InsertCharPre", {
+          group = completion_augroup,
+          buffer = args.buf,
+          callback = function()
+            if vim.fn.pumvisible() ~= 0 then
+              return
+            end
+            if not vim.v.char:match("[%w_]") then
+              return
+            end
+            local col = vim.fn.col(".")
+            local prev = col >= 2 and vim.api.nvim_get_current_line():sub(col - 1, col - 1) or ""
+            if prev:match("[%w_]") then
+              vim.lsp.completion.get()
+            end
+          end,
+        })
+      end
     end
 
     local opts = { buffer = args.buf }
