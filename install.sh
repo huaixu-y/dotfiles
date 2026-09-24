@@ -7,6 +7,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 BACKUP_SUFFIX=".bak.$(date +%Y%m%d%H%M%S)"
+KEEP_BACKUPS=3
 
 TOOLS=(fastfetch helix nushell nvim tmux)
 
@@ -35,4 +36,17 @@ for tool in "${TOOLS[@]}"; do
 
     ln -s "$src" "$dest"
     echo "link  $dest -> $src"
+done
+
+# Prune old backups, keeping the most recent ones per tool.
+# Timestamp suffixes are zero-padded, so name sort matches age.
+shopt -s nullglob
+for tool in "${TOOLS[@]}"; do
+    backups=("$CONFIG_HOME/$tool".bak.*)
+    if (( ${#backups[@]} > KEEP_BACKUPS )); then
+        while IFS= read -r old; do
+            rm -rf -- "$old"
+            echo "prune $old"
+        done < <(printf '%s\n' "${backups[@]}" | sort | head -n "-$KEEP_BACKUPS")
+    fi
 done
