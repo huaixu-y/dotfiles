@@ -2,7 +2,7 @@
 
 ## Project overview
 
-This is a personal **dotfiles repository** (`huaixu-y/dotfile` on GitHub, branch `main`). It is not a buildable software project — there is no package manifest (`pyproject.toml`, `package.json`, `Cargo.toml`, etc.), no build system, no test suite, and no CI. Each top-level directory holds the configuration for one tool, laid out to mirror its location under `~/.config/`:
+This is a personal **dotfiles repository** (`huaixu-y/dotfiles` on GitHub, branch `main`). It is not a buildable software project — there is no package manifest (`pyproject.toml`, `package.json`, `Cargo.toml`, etc.), no build system, no test suite, and no CI. Each top-level directory holds the configuration for one tool, laid out to mirror its location under `~/.config/`:
 
 ```
 fastfetch/config.jsonc   -> ~/.config/fastfetch/config.jsonc

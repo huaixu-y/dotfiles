@@ -1,4 +1,4 @@
-# dotfile
+# dotfiles
 
 Personal dotfiles for a terminal-based Linux (Wayland) workflow. Each top-level directory holds the configuration for one tool, laid out to mirror its location under `~/.config/`.
 
