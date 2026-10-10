@@ -1,38 +1,56 @@
 vim.g.mapleader = " "
+vim.g.maplocalleader = "\\"
 
--- Indentation: 4 spaces
+-- Indentation
 vim.opt.tabstop = 4
 vim.opt.shiftwidth = 4
 vim.opt.expandtab = true
+vim.opt.smartindent = true
 
--- Line numbers: relative, current line absolute (like Helix)
+-- Hybrid relative line numbers
 vim.opt.number = true
 vim.opt.relativenumber = true
 
--- Tab / Shift-Tab cycle the completion popup; insert a tab otherwise
+-- General editing
+vim.opt.undofile = true
+vim.opt.swapfile = false
+vim.opt.ignorecase = true
+vim.opt.smartcase = true
+vim.opt.hlsearch = false
+vim.opt.incsearch = true
+vim.opt.splitright = true
+vim.opt.splitbelow = true
+vim.opt.scrolloff = 8
+vim.opt.signcolumn = "yes"
+vim.opt.termguicolors = true -- required by Catppuccin
+vim.o.winborder = "rounded"
+vim.opt.clipboard = "unnamedplus"
+
+-- Completion popup: Tab/S-Tab cycle items, Enter confirms the selected one.
+-- With "noselect", an open menu with nothing selected must not swallow Enter.
 vim.keymap.set("i", "<Tab>", function()
   return vim.fn.pumvisible() == 1 and "<C-n>" or "<Tab>"
 end, { expr = true })
 vim.keymap.set("i", "<S-Tab>", function()
   return vim.fn.pumvisible() == 1 and "<C-p>" or "<S-Tab>"
 end, { expr = true })
--- Enter confirms the selected completion item; newline otherwise.
--- With "noselect" in 'completeopt', an open menu with nothing selected is just closed.
 vim.keymap.set("i", "<CR>", function()
-  return vim.fn.pumvisible() == 1 and "<C-y>" or "<CR>"
+  if vim.fn.pumvisible() == 1 and vim.fn.complete_info({ "selected" }).selected ~= -1 then
+    return "<C-y>"
+  end
+  return "<CR>"
 end, { expr = true })
 
--- Theme: catppuccin-nvim, mocha flavor
+-- Theme
 vim.pack.add({ { src = "https://github.com/catppuccin/nvim", name = "catppuccin" } })
 require("catppuccin").setup({ flavour = "mocha" })
 vim.cmd.colorscheme("catppuccin")
 
--- LSP server configurations (no plugins; built-in vim.lsp.config)
--- Requires `pyright-langserver`, `rust-analyzer` and `clangd` executables on PATH
+-- LSP servers (built-in vim.lsp.config; executables must be on PATH)
 vim.lsp.config("pyright", {
   cmd = { "pyright-langserver", "--stdio" },
   filetypes = { "python" },
-  root_markers = { "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", ".git" },
+  root_markers = { "pyrightconfig.json", "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", ".git" },
 })
 
 vim.lsp.config("rust_analyzer", {
@@ -49,9 +67,14 @@ vim.lsp.config("clangd", {
 
 vim.lsp.enable({ "pyright", "rust_analyzer", "clangd" })
 
--- Auto-completion while typing (built-in LSP completion, autotrigger)
--- plus buffer-local LSP keybindings
-vim.opt.completeopt = { "menuone", "noselect", "popup" }
+vim.diagnostic.config({
+  severity_sort = true,
+  -- only errors are shown inline; other severities via signs/underline and <leader>ld
+  virtual_text = { severity = vim.diagnostic.severity.ERROR },
+})
+
+-- Built-in LSP completion (autotrigger) + buffer-local keymaps
+vim.opt.completeopt = { "menuone", "noselect", "popup", "fuzzy" }
 local completion_augroup = vim.api.nvim_create_augroup("dotfiles.lsp_completion", { clear = true })
 vim.api.nvim_create_autocmd("LspAttach", {
   callback = function(args)
@@ -59,8 +82,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
     if client and client:supports_method("textDocument/completion") then
       vim.lsp.completion.enable(true, client.id, args.buf, { autotrigger = true })
 
-      -- Also trigger completion from the 2nd keyword character of a word.
-      -- Register only once per buffer, even if multiple clients attach.
+      -- Also trigger from the 2nd keyword character; register once per buffer
       if #vim.api.nvim_get_autocmds({ group = completion_augroup, buffer = args.buf }) == 0 then
         vim.api.nvim_create_autocmd("InsertCharPre", {
           group = completion_augroup,
@@ -73,7 +95,10 @@ vim.api.nvim_create_autocmd("LspAttach", {
               return
             end
             local col = vim.fn.col(".")
-            local prev = col >= 2 and vim.api.nvim_get_current_line():sub(col - 1, col - 1) or ""
+            -- charcol/strcharpart use char (not byte) indexing, so multibyte works
+            local prev = col >= 2
+              and vim.fn.strcharpart(vim.api.nvim_get_current_line(), vim.fn.charcol(".") - 2, 1)
+              or ""
             if prev:match("[%w_]") then
               vim.lsp.completion.get()
             end
@@ -82,10 +107,11 @@ vim.api.nvim_create_autocmd("LspAttach", {
       end
     end
 
+    -- gd/gD are not built-in defaults (those are the gr* maps)
     local opts = { buffer = args.buf }
-    vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)            -- go to definition
-    vim.keymap.set("n", "gD", vim.lsp.buf.declaration, opts)           -- go to declaration
-    vim.keymap.set("n", "<leader>f", vim.lsp.buf.format, opts)         -- format buffer
-    vim.keymap.set("n", "<leader>d", vim.diagnostic.open_float, opts)  -- line diagnostics
+    vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+    vim.keymap.set("n", "gD", vim.lsp.buf.declaration, opts)
+    vim.keymap.set({ "n", "v" }, "<leader>lf", vim.lsp.buf.format, opts)
+    vim.keymap.set("n", "<leader>ld", vim.diagnostic.open_float, opts)
   end,
 })
