@@ -1,2 +1,12 @@
-nvim/nvim-pack-lock.json
+# fastfetch
+
+# helix
 helix/runtime
+
+# nushell
+nushell/history.txt
+
+# nvim
+nvim/nvim-pack-lock.json
+
+# tmux
