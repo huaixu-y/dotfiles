@@ -43,7 +43,7 @@ done
 shopt -s nullglob
 for tool in "${TOOLS[@]}"; do
     backups=("$CONFIG_HOME/$tool".bak.*)
-    if (( ${#backups[@]} > KEEP_BACKUPS )); then
+    if ((${#backups[@]} > KEEP_BACKUPS)); then
         while IFS= read -r old; do
             rm -rf -- "$old"
             echo "prune $old"

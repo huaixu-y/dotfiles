@@ -96,8 +96,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
             end
             local col = vim.fn.col(".")
             -- charcol/strcharpart use char (not byte) indexing, so multibyte works
-            local prev = col >= 2
-              and vim.fn.strcharpart(vim.api.nvim_get_current_line(), vim.fn.charcol(".") - 2, 1)
+            local prev = col >= 2 and vim.fn.strcharpart(vim.api.nvim_get_current_line(), vim.fn.charcol(".") - 2, 1)
               or ""
             if prev:match("[%w_]") then
               vim.lsp.completion.get()
