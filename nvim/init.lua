@@ -75,12 +75,34 @@ vim.diagnostic.config({
 
 -- Built-in LSP completion (autotrigger) + buffer-local keymaps
 vim.opt.completeopt = { "menuone", "noselect", "popup", "fuzzy" }
+vim.opt.pumheight = 10
+vim.opt.pumblend = 10
+-- Nerd Font icons for the completion menu's kind column (requires a Nerd Font)
+local kind_icons = {
+  Text = "󰉿", Method = "󰆧", Function = "󰊕", Constructor = "",
+  Field = "󰜢", Variable = "󰀫", Class = "󰠱", Interface = "",
+  Module = "", Property = "󰜢", Unit = "󰑭", Value = "󰎠",
+  Enum = "", Keyword = "󰌋", Snippet = "", Color = "󰏘",
+  File = "󰈙", Reference = "󰈇", Folder = "󰉋", EnumMember = "",
+  Constant = "󰏿", Struct = "󰙅", Event = "", Operator = "󰆕",
+  TypeParameter = "",
+}
+
+local function completion_convert(item)
+  local kind = vim.lsp.protocol.CompletionItemKind[item.kind]
+  local icon = kind and kind_icons[kind]
+  return { kind = icon and (icon .. " " .. kind) or kind }
+end
+
 local completion_augroup = vim.api.nvim_create_augroup("dotfiles.lsp_completion", { clear = true })
 vim.api.nvim_create_autocmd("LspAttach", {
   callback = function(args)
     local client = vim.lsp.get_client_by_id(args.data.client_id)
     if client and client:supports_method("textDocument/completion") then
-      vim.lsp.completion.enable(true, client.id, args.buf, { autotrigger = true })
+      vim.lsp.completion.enable(true, client.id, args.buf, {
+        autotrigger = true,
+        convert = completion_convert,
+      })
 
       -- Also trigger from the 2nd keyword character; register once per buffer
       if #vim.api.nvim_get_autocmds({ group = completion_augroup, buffer = args.buf }) == 0 then
