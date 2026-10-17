@@ -55,7 +55,7 @@
     "break",
     { "type": "custom", "format": "┏━ Terminal", "outputColor": "#94e2d5" },
     { "type": "terminal", "key": "├─  Terminal", "keyColor": "#94e2d5" },
-    { "type": "terminalfont", "key": "└─  Terminal Font", "keyColor": "#94e2d5" },
+    { "type": "terminalfont", "key": "└─  Font", "keyColor": "#94e2d5" },
     "break",
     { "type": "colors", "symbol": "circle" }
   ]
