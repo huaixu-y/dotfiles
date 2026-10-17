@@ -21,7 +21,6 @@
     }
   },
   "modules": [
-    { "type": "title", "color": { "user": "#89b4fa", "at": "#6c7086", "host": "#89b4fa" } },
     "break",
     { "type": "custom", "format": "┏━ Hardware", "outputColor": "#89b4fa" },
     { "type": "host", "key": "├─ 󰌢 Host", "keyColor": "#89b4fa" },
