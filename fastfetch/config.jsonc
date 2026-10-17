@@ -39,7 +39,7 @@
     { "type": "custom", "format": "┏━ Software", "outputColor": "#a6e3a1" },
     { "type": "os", "key": "├─  OS", "keyColor": "#a6e3a1" },
     { "type": "kernel", "key": "├─ 󰒓 Kernel", "keyColor": "#a6e3a1" },
-    { "type": "uptime", "key": "├─ 󰅐 Uptime", "keyColor": "#a6e3a1", "format": "{?days}{days}d {?}{hours}h {minutes}m" },
+    { "type": "uptime", "key": "├─ 󰅐 Uptime", "keyColor": "#a6e3a1", "format": "{?days}{days}d {?}{?hours}{hours}h {?}{minutes}m" },
     { "type": "packages", "key": "├─ 󰏗 Packages", "keyColor": "#a6e3a1" },
     { "type": "shell", "key": "├─ 󰆍 Shell", "keyColor": "#a6e3a1" },
     { "type": "locale", "key": "└─ 󱪫 Locale", "keyColor": "#a6e3a1" },
