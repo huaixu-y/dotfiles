@@ -85,13 +85,13 @@ local kind_icons = {
   Enum = "", Keyword = "󰌋", Snippet = "", Color = "󰏘",
   File = "󰈙", Reference = "󰈇", Folder = "󰉋", EnumMember = "",
   Constant = "󰏿", Struct = "󰙅", Event = "", Operator = "󰆕",
-  TypeParameter = "",
+  TypeParameter = "󰊄",
 }
 
 local function completion_convert(item)
   local kind = vim.lsp.protocol.CompletionItemKind[item.kind]
   local icon = kind and kind_icons[kind]
-  return { kind = icon and (icon .. " " .. kind) or kind }
+  return { kind = (icon ~= nil and icon ~= "") and (icon .. " " .. kind) or kind }
 end
 
 local completion_augroup = vim.api.nvim_create_augroup("dotfiles.lsp_completion", { clear = true })
