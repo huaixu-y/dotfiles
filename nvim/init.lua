@@ -1,3 +1,6 @@
+-- gettext binds the message catalog before init.lua runs, so vim.env cannot switch it here
+vim.cmd("language messages C")
+
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
