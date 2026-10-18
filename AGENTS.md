@@ -8,6 +8,8 @@ This is a personal **dotfiles repository** (`huaixu-y/dotfiles` on GitHub, branc
 fastfetch/config.jsonc   -> ~/.config/fastfetch/config.jsonc
 fish/config.fish         -> ~/.config/fish/config.fish
 helix/config.toml        -> ~/.config/helix/config.toml
+kitty/kitty.conf         -> ~/.config/kitty/kitty.conf
+kitty/themes/mocha.conf  -> ~/.config/kitty/themes/mocha.conf
 nushell/config.nu        -> ~/.config/nushell/config.nu
 nushell/env.nu           -> ~/.config/nushell/env.nu
 nvim/init.lua            -> ~/.config/nvim/init.lua
@@ -26,6 +28,7 @@ Configurations for a terminal-based Linux (Wayland) workflow:
 - **Helix** — `catppuccin_mocha` theme, relative line numbers, mouse disabled, cursor shapes per mode, soft-wrap enabled with the wrap indicator hidden (`wrap-indicator = ""`). The runtime lives at the default location `~/.config/helix/runtime` — which resolves into this repo because `~/.config/helix` is a symlink to `helix/` here — and is git-ignored (`helix/runtime`).
 - **Neovim** (0.12+) — `init.lua` sets the catppuccin theme (mocha) via the `catppuccin/nvim` plugin installed with `vim.pack`, and enables LSP for Python (`pyright`), Rust (`rust_analyzer`) and C/C++ (`clangd`) using the built-in `vim.lsp.config`/`vim.lsp.enable` with hand-written server configs — no `nvim-lspconfig` and no `require('lspconfig')` (deprecated). Auto-completion uses the built-in `vim.lsp.completion`: `autotrigger = true` (server trigger characters) plus an `InsertCharPre` autocmd that calls `vim.lsp.completion.get()` starting from the 2nd keyword character of a word. Popup interaction: `Tab`/`S-Tab` cycle items, `Enter` confirms the selected item (`C-y`) but inserts a plain newline when the menu is open with nothing selected; `completeopt` keeps `noselect`. `mapleader` is Space; the same `LspAttach` autocmd adds buffer-local mappings (`gd` definition, `gD` declaration, `<leader>lf` format — buffer or visual selection, `<leader>ld` diagnostics) on top of Neovim's built-in `gr*` LSP defaults. Diagnostics show errors inline (`virtual_text` filtered to `severity = ERROR`; other severities keep the 0.12 default signs + underline), with `severity_sort` enabled via `vim.diagnostic.config`. The sign column is always shown and floating windows use rounded borders (`winborder`). Line numbers are hybrid relative; indentation is 4 spaces. Server executables must be on `PATH` (`pyright-langserver`, `rust-analyzer`, `clangd`).
 - **fastfetch** — JSONC module list with the official JSON schema referenced via `$schema`.
+- **Kitty** — Cascadia Code NF (Nerd Font) with auto-detected bold/italic via fontconfig, `shell /usr/bin/fish`, hidden Wayland titlebar only (`titlebar-only`, keeps the window shadow for resizing), `background_opacity 0.9` with `background_blur 64` (works on COSMIC via `org.kde.KWin.Blur`), and the Catppuccin Mocha theme vendored from [catppuccin/kitty](https://github.com/catppuccin/kitty) (`include themes/mocha.conf`).
 
 Consistent theme choice across editors: **Catppuccin** (Mocha).
 
@@ -39,6 +42,7 @@ Consistent theme choice across editors: **Catppuccin** (Mocha).
   - Helix: run `hx --health` to validate config and runtime paths.
   - Neovim: check Lua syntax with `nvim --headless -u NONE '+lua assert(loadfile("nvim/init.lua"))' +qa`; note the first real launch clones `vim.pack` plugins (needs network).
   - fastfetch: run `fastfetch` to validate the JSONC.
+  - kitty: start a new kitty instance, or validate parsing with `kitty +runpy 'from kitty.config import load_config; load_config("~/.config/kitty/kitty.conf")'`.
 - Deployment = run `./install.sh` to symlink every tool directory except `helix/` into `~/.config/`, or copy/symlink manually per file.
 
 ## Conventions for editing
