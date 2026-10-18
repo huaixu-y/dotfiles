@@ -46,6 +46,9 @@ vim.pack.add({ { src = "https://github.com/catppuccin/nvim", name = "catppuccin"
 require("catppuccin").setup({ flavour = "mocha" })
 vim.cmd.colorscheme("catppuccin")
 
+-- Start page (after the theme so it can read the palette)
+require("dashboard").setup()
+
 -- LSP servers (built-in vim.lsp.config; executables must be on PATH)
 vim.lsp.config("pyright", {
   cmd = { "pyright-langserver", "--stdio" },

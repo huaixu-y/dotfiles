@@ -13,6 +13,7 @@ kitty/themes/mocha.conf  -> ~/.config/kitty/themes/mocha.conf
 nushell/config.nu        -> ~/.config/nushell/config.nu
 nushell/env.nu           -> ~/.config/nushell/env.nu
 nvim/init.lua            -> ~/.config/nvim/init.lua
+nvim/lua/dashboard.lua   -> ~/.config/nvim/lua/dashboard.lua
 tmux/tmux.conf           -> ~/.config/tmux/tmux.conf
 ```
 
@@ -22,7 +23,7 @@ tmux/tmux.conf           -> ~/.config/tmux/tmux.conf
 - **Nushell** — secondary shell, after fish in the tmux auto-detect order. `config.nu` initializes the Starship prompt, hides the banner, aliases `ft` to `fastfetch` and `vim` to `nvim`, and sources `~/.cargo/env.nu`. `env.nu` sets `$env.EDITOR` to `nvim` when it is installed.
 - **tmux** — prefix `C-Space`, default shell auto-detected at server start (fish → nu → zsh, falling back to `/bin/sh`), mouse on, 1-based indexing, extended keys (CSI-u), `allow-passthrough` for Yazi image previews (Kitty protocol), Alt-hjkl pane navigation, vi copy mode piping to `wl-copy`, 10ms escape-time, 10000-line scrollback, and `display-popup` bindings (`C-p` shell, `g` lazygit, `v` nvim, `/` command menu) at 90% size. True color (`*:RGB` terminal feature) and focus events are enabled.
 - **Helix** — `catppuccin_mocha` theme, relative line numbers, mouse disabled, cursor shapes per mode, soft-wrap enabled with the wrap indicator hidden.
-- **Neovim** (0.12+) — catppuccin theme (mocha) via the `catppuccin/nvim` plugin installed with the built-in `vim.pack`. LSP for Python (`pyright`), Rust (`rust_analyzer`) and C/C++ (`clangd`) via built-in `vim.lsp.config`/`vim.lsp.enable` (no `nvim-lspconfig`). Built-in auto-completion (`vim.lsp.completion`): triggers on server trigger characters and from the 2nd keyword character of a word; `Tab`/`S-Tab` cycle items, `Enter` confirms. Buffer-local LSP keybindings (`gd`, `gD`, `<leader>lf` format, `<leader>ld` diagnostics; leader is Space). Hybrid relative line numbers. Indentation: 4 spaces.
+- **Neovim** (0.12+) — catppuccin theme (mocha) via the `catppuccin/nvim` plugin installed with the built-in `vim.pack`. LSP for Python (`pyright`), Rust (`rust_analyzer`) and C/C++ (`clangd`) via built-in `vim.lsp.config`/`vim.lsp.enable` (no `nvim-lspconfig`). Built-in auto-completion (`vim.lsp.completion`): triggers on server trigger characters and from the 2nd keyword character of a word; `Tab`/`S-Tab` cycle items, `Enter` confirms. Buffer-local LSP keybindings (`gd`, `gD`, `<leader>lf` format, `<leader>ld` diagnostics; leader is Space). Hybrid relative line numbers. Indentation: 4 spaces. A hand-written start page (`lua/dashboard.lua`, no plugin) in the empty buffer on a bare `nvim` launch: centred banner with a mauve→blue gradient, cwd/version line, and a menu (`n` new file, `f` find file, `r` recent files, `c` open config, `q` quit); skips when files, `-c`/`+cmd` or a session are given, and `let g:dotfiles_dashboard_skip = 1` disables it.
 - **fastfetch** — JSONC module list with the official JSON schema referenced via `$schema`.
 - **Kitty** — Cascadia Code NF (Nerd Font) with auto-detected bold/italic, `fish` as the shell, hidden titlebar (shadow kept for resizing), background blur with 0.9 opacity (COSMIC supports `org.kde.KWin.Blur`), and the Catppuccin Mocha theme (vendored from [catppuccin/kitty](https://github.com/catppuccin/kitty)).
 
