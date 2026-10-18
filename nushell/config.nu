@@ -14,9 +14,11 @@
 # options using:
 #     config nu --doc | nu-highlight | less -R
 
-# starship
-mkdir ($nu.data-dir | path join "vendor/autoload")
-starship init nu | save -f ($nu.data-dir | path join "vendor/autoload/starship.nu")
+# starship (skip when not installed so startup never fails)
+if (which starship | is-not-empty) {
+    mkdir ($nu.data-dir | path join "vendor/autoload")
+    starship init nu | save -f ($nu.data-dir | path join "vendor/autoload/starship.nu")
+}
 
 # nushell
 $env.config.show_banner = false
@@ -25,5 +27,7 @@ $env.config.show_banner = false
 alias ft = fastfetch
 alias vim = nvim
 
-# cargo
-source "~/.cargo/env.nu"
+# cargo (rustup-generated; only some machines have it)
+if ("~/.cargo/env.nu" | path exists) {
+    source "~/.cargo/env.nu"
+}
