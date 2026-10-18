@@ -1,5 +1,10 @@
 # fastfetch
 
+# fish
+fish/fish_variables
+# rustup-managed drop-in, regenerated at install time
+fish/conf.d/rustup.fish
+
 # helix
 helix/runtime
 

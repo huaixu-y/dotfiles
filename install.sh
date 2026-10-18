@@ -9,7 +9,7 @@ CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 BACKUP_SUFFIX=".bak.$(date +%Y%m%d%H%M%S)"
 KEEP_BACKUPS=3
 
-TOOLS=(fastfetch nushell nvim tmux)
+TOOLS=(fastfetch fish nushell nvim tmux)
 
 mkdir -p "$CONFIG_HOME"
 
