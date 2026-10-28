@@ -5,7 +5,8 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+# Yazi's syntax theme needs a static path, so installation targets ~/.config.
+CONFIG_HOME="$HOME/.config"
 BACKUP_SUFFIX=".bak.$(date +%Y%m%d%H%M%S)"
 KEEP_BACKUPS=3
 

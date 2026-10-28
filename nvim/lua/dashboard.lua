@@ -38,13 +38,16 @@ local function palette()
     end
   end
   return {
+    base = "#1e1e2e",
     mauve = "#cba6f7",
     blue = "#89b4fa",
     text = "#cdd6f4",
     overlay1 = "#7f849c",
+    surface0 = "#313244",
     surface1 = "#45475a",
     peach = "#fab387",
     teal = "#94e2d5",
+    lavender = "#b4befe",
   }
 end
 
@@ -61,6 +64,13 @@ local function setup_highlights()
   vim.api.nvim_set_hl(0, "DotfilesDashboardIcon", { fg = pal.peach })
   vim.api.nvim_set_hl(0, "DotfilesDashboardLabel", { fg = pal.text })
   vim.api.nvim_set_hl(0, "DotfilesDashboardKey", { fg = pal.teal, bold = true })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerNormal", { bg = pal.base })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerBorder", { fg = pal.surface1, bg = pal.base })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerTitle", { fg = pal.mauve, bg = pal.base, bold = true })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerFooter", { fg = pal.overlay1, bg = pal.base })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerSelection", { bg = pal.surface0 })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerIcon", { fg = pal.lavender })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerPath", { fg = pal.text })
 end
 
 local function edit(path)
@@ -75,28 +85,320 @@ local function new_file()
   end)
 end
 
-local IGNORED = { "/%.git/", "/node_modules/", "/%.venv/", "/__pycache__/", "/target/" }
+local FIND_FILE_LIMIT = 2000
+local PICKER_HEIGHT = 15
+local IGNORED_DIRS = { ".git", "node_modules", ".venv", "__pycache__", "target" }
+local IGNORED_DIR_SET = {}
+for _, name in ipairs(IGNORED_DIRS) do
+  IGNORED_DIR_SET[name] = true
+end
+
+local finding_files = false
+
+local FILE_ICONS = {
+  c = "", cpp = "", css = "", fish = "", go = "", h = "",
+  html = "", js = "", json = "", jsonc = "", lua = "", md = "󰂺",
+  nu = "", py = "", rs = "", sh = "", toml = "", ts = "",
+  tsx = "", xml = "󰗀", yaml = "", yml = "",
+}
+
+local function file_icon(path)
+  local extension = path:match("%.([^.]+)$")
+  return (extension and FILE_ICONS[extension:lower()]) or "󰈔"
+end
+
+-- Keep the informative tail when a label does not fit.
+local function truncate_tail(text, width)
+  if vim.fn.strdisplaywidth(text) <= width then
+    return text
+  end
+  local start = 0
+  while vim.fn.strdisplaywidth(vim.fn.strcharpart(text, start)) > width - 1 do
+    start = start + 1
+  end
+  return "…" .. vim.fn.strcharpart(text, start)
+end
+
+local function matches_filter(path, query)
+  local text = path:lower()
+  for token in query:lower():gmatch("%S+") do
+    if not text:find(token, 1, true) then
+      return false
+    end
+  end
+  return true
+end
+
+local function open_file_picker(files, title, on_choice)
+  if #files == 0 then
+    vim.notify("No files found", vim.log.levels.INFO)
+    return
+  end
+
+  local parent = vim.api.nvim_get_current_win()
+  local input_buf = vim.api.nvim_create_buf(false, true)
+  local list_buf = vim.api.nvim_create_buf(false, true)
+  local width = math.max(20, math.min(100, math.floor(vim.o.columns * 0.65)))
+  width = math.min(width, math.max(20, vim.o.columns - 4))
+  local height = math.min(PICKER_HEIGHT, math.max(1, vim.o.lines - 10))
+  local top = math.max(0, math.floor((vim.o.lines - height - 5) / 2) - 1)
+  local left = math.max(0, math.floor((vim.o.columns - width) / 2))
+  local filtered, input_win, list_win = {}, nil, nil
+  local closed = false
+
+  local function render()
+    if closed then
+      return
+    end
+    local query = table.concat(vim.api.nvim_buf_get_lines(input_buf, 0, -1, false), " ")
+    filtered = {}
+    for _, path in ipairs(files) do
+      if matches_filter(path, query) then
+        filtered[#filtered + 1] = path
+      end
+    end
+
+    local lines, marks = {}, {}
+    for i, path in ipairs(filtered) do
+      local icon = file_icon(path)
+      local display = vim.fn.fnamemodify(path, ":~"):gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\t", "\\t")
+      display = truncate_tail(display, width - 6)
+      lines[i] = " " .. icon .. " " .. display .. " "
+      local path_col = #icon + 2
+      marks[#marks + 1] = { row = i - 1, col = 1, stop = #icon + 1, hl = "DotfilesDashboardPickerIcon" }
+      marks[#marks + 1] = {
+        row = i - 1,
+        col = path_col,
+        stop = path_col + #display,
+        hl = "DotfilesDashboardPickerPath",
+      }
+    end
+    if #filtered == 0 then
+      lines = { "  No matching files " }
+      marks = { { row = 0, col = 2, stop = 19, hl = "DotfilesDashboardSubtitle" } }
+    end
+
+    vim.bo[list_buf].modifiable = true
+    vim.api.nvim_buf_set_lines(list_buf, 0, -1, false, lines)
+    vim.bo[list_buf].modifiable = false
+    vim.api.nvim_buf_clear_namespace(list_buf, ns, 0, -1)
+    for _, mark in ipairs(marks) do
+      vim.api.nvim_buf_set_extmark(list_buf, ns, mark.row, mark.col, {
+        end_col = mark.stop,
+        hl_group = mark.hl,
+      })
+    end
+
+    vim.api.nvim_win_set_config(list_win, {
+      title = (" %d/%d "):format(#filtered, #files),
+      title_pos = "center",
+    })
+    local row = math.max(1, math.min(vim.api.nvim_win_get_cursor(list_win)[1], #filtered))
+    vim.api.nvim_win_set_cursor(list_win, { row, 0 })
+  end
+
+  local function close()
+    if closed then
+      return
+    end
+    closed = true
+    vim.cmd.stopinsert()
+    if vim.api.nvim_win_is_valid(input_win) then
+      vim.api.nvim_win_close(input_win, true)
+    end
+    if vim.api.nvim_win_is_valid(list_win) then
+      vim.api.nvim_win_close(list_win, true)
+    end
+    if vim.api.nvim_win_is_valid(parent) then
+      vim.api.nvim_set_current_win(parent)
+    end
+  end
+  local function choose()
+    local choice = filtered[vim.api.nvim_win_get_cursor(list_win)[1]]
+    if not choice then
+      return
+    end
+    close()
+    on_choice(choice)
+  end
+  local function move(delta)
+    if #filtered == 0 then
+      return
+    end
+    local row = vim.api.nvim_win_get_cursor(list_win)[1]
+    row = (row - 1 + delta) % #filtered + 1
+    vim.api.nvim_win_set_cursor(list_win, { row, 0 })
+  end
+  local function focus_input()
+    vim.api.nvim_set_current_win(input_win)
+    vim.cmd("startinsert!")
+  end
+
+  input_win = vim.api.nvim_open_win(input_buf, true, {
+    relative = "editor",
+    row = top,
+    col = left,
+    width = width,
+    height = 1,
+    style = "minimal",
+    border = "rounded",
+    title = " 󰍉 " .. title .. " ",
+    title_pos = "center",
+    zindex = 61,
+  })
+  list_win = vim.api.nvim_open_win(list_buf, false, {
+    relative = "editor",
+    row = top + 3,
+    col = left,
+    width = width,
+    height = height,
+    title = (" %d/%d "):format(#files, #files),
+    title_pos = "center",
+    style = "minimal",
+    border = "rounded",
+    footer = " C-n/p move   Enter open   Esc close ",
+    footer_pos = "center",
+    zindex = 60,
+  })
+  local winhighlight = table.concat({
+    "Normal:DotfilesDashboardPickerNormal",
+    "NormalFloat:DotfilesDashboardPickerNormal",
+    "FloatBorder:DotfilesDashboardPickerBorder",
+    "FloatTitle:DotfilesDashboardPickerTitle",
+    "FloatFooter:DotfilesDashboardPickerFooter",
+    "CursorLine:DotfilesDashboardPickerSelection",
+  }, ",")
+  vim.wo[input_win].winhighlight = winhighlight
+  vim.wo[list_win].winhighlight = winhighlight
+  vim.wo[list_win].cursorline = true
+  vim.wo[list_win].fillchars = "eob: "
+  vim.bo[input_buf].bufhidden = "wipe"
+  vim.bo[list_buf].bufhidden = "wipe"
+
+  local input_opts = { buffer = input_buf, nowait = true, silent = true }
+  for _, mode in ipairs({ "i", "n" }) do
+    vim.keymap.set(mode, "<CR>", choose, input_opts)
+    vim.keymap.set(mode, "<Esc>", close, input_opts)
+    vim.keymap.set(mode, "<C-c>", close, input_opts)
+    vim.keymap.set(mode, "<C-n>", function() move(1) end, input_opts)
+    vim.keymap.set(mode, "<C-p>", function() move(-1) end, input_opts)
+    vim.keymap.set(mode, "<Down>", function() move(1) end, input_opts)
+    vim.keymap.set(mode, "<Up>", function() move(-1) end, input_opts)
+  end
+  local list_opts = { buffer = list_buf, nowait = true, silent = true }
+  vim.keymap.set("n", "<CR>", choose, list_opts)
+  vim.keymap.set("n", "<Esc>", close, list_opts)
+  vim.keymap.set("n", "<C-c>", close, list_opts)
+  vim.keymap.set("n", "q", close, list_opts)
+  vim.keymap.set("n", "/", focus_input, list_opts)
+  vim.keymap.set("n", "i", focus_input, list_opts)
+  vim.keymap.set("n", "<C-n>", function() move(1) end, list_opts)
+  vim.keymap.set("n", "<C-p>", function() move(-1) end, list_opts)
+  vim.keymap.set("n", "<Down>", function() move(1) end, list_opts)
+  vim.keymap.set("n", "<Up>", function() move(-1) end, list_opts)
+
+  vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+    buffer = input_buf,
+    callback = render,
+  })
+  render()
+  vim.cmd("startinsert!")
+end
+
+local function show_file_picker(cwd, files)
+  finding_files = false
+  table.sort(files)
+  open_file_picker(files, "Find file", function(choice)
+    edit(vim.fs.joinpath(cwd, choice))
+  end)
+end
+
+-- Prune ignored directories and yield between scans to keep the UI responsive.
+local function scan_files(cwd)
+  local files, dirs = {}, { cwd }
+  local prefix = cwd:sub(-1) == "/" and cwd or cwd .. "/"
+  local function step()
+    if #files >= FIND_FILE_LIMIT then
+      show_file_picker(cwd, files)
+      return
+    end
+    local dir = table.remove(dirs)
+    if not dir then
+      show_file_picker(cwd, files)
+      return
+    end
+    local scanner = vim.uv.fs_scandir(dir)
+    if scanner then
+      while #files < FIND_FILE_LIMIT do
+        local name, kind = vim.uv.fs_scandir_next(scanner)
+        if not name then
+          break
+        end
+        local path = vim.fs.joinpath(dir, name)
+        if kind == "directory" then
+          if not IGNORED_DIR_SET[name] then
+            dirs[#dirs + 1] = path
+          end
+        elseif kind == "file" or kind == "link" then
+          local target = kind == "link" and vim.uv.fs_stat(path) or nil
+          if kind == "file" or (target and target.type == "file") then
+            files[#files + 1] = path:sub(#prefix + 1)
+          end
+        end
+      end
+    end
+    vim.schedule(step)
+  end
+  step()
+end
 
 local function find_file()
+  if finding_files then
+    return
+  end
+  finding_files = true
   local cwd = vim.fn.getcwd()
-  local files = {}
-  for _, path in ipairs(vim.fn.globpath(cwd, "**/*", false, true)) do
-    if vim.fn.isdirectory(path) == 0 then
-      local ignored = vim.iter(IGNORED):any(function(pat)
-        return path:find(pat) ~= nil
-      end)
-      if not ignored then
+  local cmd
+  local fd = vim.fn.executable("fd") == 1 and "fd"
+    or (vim.fn.executable("fdfind") == 1 and "fdfind" or nil)
+  if fd then
+    cmd = { fd, "--type", "f", "--hidden", "--color", "never", "--print0" }
+    for _, name in ipairs(IGNORED_DIRS) do
+      vim.list_extend(cmd, { "--exclude", name })
+    end
+  elseif vim.fn.executable("rg") == 1 then
+    cmd = { "rg", "--files", "--hidden", "--color", "never", "--null" }
+    for _, name in ipairs(IGNORED_DIRS) do
+      vim.list_extend(cmd, { "--glob", "!" .. name .. "/" })
+    end
+  elseif vim.fn.executable("git") == 1 and vim.fs.find(".git", { path = cwd, upward = true })[1] then
+    cmd = { "git", "ls-files", "--cached", "--others", "--exclude-standard", "-z" }
+  end
+
+  if not cmd then
+    scan_files(cwd)
+    return
+  end
+  vim.system(cmd, { cwd = cwd, text = true }, function(result)
+    local files = {}
+    if result.code == 0 then
+      for path in (result.stdout or ""):gmatch("([^%z]+)") do
+        if path:sub(1, 2) == "./" then
+          path = path:sub(3)
+        end
         files[#files + 1] = path
-        if #files >= 2000 then
+        if #files >= FIND_FILE_LIMIT then
           break
         end
       end
     end
-  end
-  vim.ui.select(files, { prompt = "Find file" }, function(choice)
-    if choice then
-      edit(choice)
-    end
+    vim.schedule(function()
+      if result.code == 0 then
+        show_file_picker(cwd, files)
+      else
+        scan_files(cwd)
+      end
+    end)
   end)
 end
 
@@ -111,11 +413,7 @@ local function recent_files()
       end
     end
   end
-  vim.ui.select(files, { prompt = "Recent files" }, function(choice)
-    if choice then
-      edit(choice)
-    end
-  end)
+  open_file_picker(files, "Recent files", edit)
 end
 
 local menu = {
@@ -128,15 +426,7 @@ local menu = {
 
 local function subtitle()
   local text = ("v%s · %s"):format(tostring(vim.version()), vim.fn.fnamemodify(vim.fn.getcwd(), ":~"))
-  if vim.fn.strdisplaywidth(text) <= BLOCK_WIDTH then
-    return text
-  end
-  -- keep the tail (the informative part) and mark the cut
-  local start = 0
-  while vim.fn.strdisplaywidth(vim.fn.strcharpart(text, start)) > BLOCK_WIDTH - 1 do
-    start = start + 1
-  end
-  return "…" .. vim.fn.strcharpart(text, start)
+  return truncate_tail(text, BLOCK_WIDTH)
 end
 
 local function menu_rows()
