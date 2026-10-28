@@ -2,7 +2,8 @@
 
 # fish
 fish/fish_variables
-# Machine-local CLI completion
+# Machine-local CLI completions
+fish/completions/gc.fish
 fish/completions/gitcode.fish
 # rustup-managed drop-in, regenerated at install time
 fish/conf.d/rustup.fish
