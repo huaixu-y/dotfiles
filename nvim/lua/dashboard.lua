@@ -48,6 +48,7 @@ local function palette()
     peach = "#fab387",
     teal = "#94e2d5",
     lavender = "#b4befe",
+    yellow = "#f9e2af",
   }
 end
 
@@ -60,17 +61,111 @@ local function setup_highlights()
     })
   end
   vim.api.nvim_set_hl(0, "DotfilesDashboardSubtitle", { fg = pal.overlay1 })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardVersion", { fg = pal.lavender })
   vim.api.nvim_set_hl(0, "DotfilesDashboardRule", { fg = pal.surface1 })
   vim.api.nvim_set_hl(0, "DotfilesDashboardIcon", { fg = pal.peach })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardFindIcon", { fg = pal.blue })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardRecentIcon", { fg = pal.lavender })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardConfigIcon", { fg = pal.teal })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardMutedIcon", { fg = pal.overlay1 })
   vim.api.nvim_set_hl(0, "DotfilesDashboardLabel", { fg = pal.text })
   vim.api.nvim_set_hl(0, "DotfilesDashboardKey", { fg = pal.teal, bold = true })
   vim.api.nvim_set_hl(0, "DotfilesDashboardPickerNormal", { bg = pal.base })
   vim.api.nvim_set_hl(0, "DotfilesDashboardPickerBorder", { fg = pal.surface1, bg = pal.base })
   vim.api.nvim_set_hl(0, "DotfilesDashboardPickerTitle", { fg = pal.mauve, bg = pal.base, bold = true })
   vim.api.nvim_set_hl(0, "DotfilesDashboardPickerFooter", { fg = pal.overlay1, bg = pal.base })
-  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerSelection", { bg = pal.surface0 })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerSelection", { bg = pal.surface0, bold = true })
   vim.api.nvim_set_hl(0, "DotfilesDashboardPickerIcon", { fg = pal.lavender })
-  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerPath", { fg = pal.text })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerIconCode", { fg = pal.blue })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerIconMarkup", { fg = pal.peach })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerIconConfig", { fg = pal.yellow })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerDirectory", { fg = pal.overlay1 })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerPath", { fg = pal.text, bold = true })
+  vim.api.nvim_set_hl(0, "DotfilesDashboardPickerCount", { fg = pal.teal, bg = pal.base, bold = true })
+end
+
+-- Keep the informative tail when a label does not fit.
+local function truncate_tail(text, width)
+  if vim.fn.strdisplaywidth(text) <= width then
+    return text
+  end
+  local start = 0
+  while vim.fn.strdisplaywidth(vim.fn.strcharpart(text, start)) > width - 1 do
+    start = start + 1
+  end
+  return "…" .. vim.fn.strcharpart(text, start)
+end
+
+local FLOAT_WINHIGHLIGHT = table.concat({
+  "Normal:DotfilesDashboardPickerNormal",
+  "NormalFloat:DotfilesDashboardPickerNormal",
+  "FloatBorder:DotfilesDashboardPickerBorder",
+  "FloatTitle:DotfilesDashboardPickerTitle",
+  "FloatFooter:DotfilesDashboardPickerFooter",
+}, ",")
+local PICKER_WINHIGHLIGHT = FLOAT_WINHIGHLIGHT .. ",CursorLine:DotfilesDashboardPickerSelection"
+
+local function truncate_head(text, width)
+  if width <= 0 then
+    return ""
+  end
+  if vim.fn.strdisplaywidth(text) <= width then
+    return text
+  end
+  local count = math.max(0, vim.fn.strchars(text) - 1)
+  while count > 0 and vim.fn.strdisplaywidth(vim.fn.strcharpart(text, 0, count)) > width - 1 do
+    count = count - 1
+  end
+  return vim.fn.strcharpart(text, 0, count) .. "…"
+end
+
+local function display_path(path)
+  local text = vim.fn.fnamemodify(path, ":~")
+  return text:gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\t", "\\t"):gsub("%c", "?")
+end
+
+local function chunks_width(chunks)
+  local width = 0
+  for _, chunk in ipairs(chunks) do
+    width = width + vim.fn.strdisplaywidth(chunk[1])
+  end
+  return width
+end
+
+local function adaptive_title(icon, label, width)
+  local title = " " .. icon .. " " .. label .. " "
+  if vim.fn.strdisplaywidth(title) <= width then
+    return title
+  end
+  title = " " .. label .. " "
+  return vim.fn.strdisplaywidth(title) <= width and title or ""
+end
+
+local function key_footer(width, full, compact)
+  local chunks = width >= chunks_width(full) and full or compact
+  if width >= chunks_width(chunks) then
+    return chunks
+  end
+  if width >= 5 then
+    return {
+      { "⏎", "DotfilesDashboardKey" },
+      { " ", "DotfilesDashboardPickerFooter" },
+      { "Esc", "DotfilesDashboardKey" },
+    }
+  end
+  return { { "⏎", "DotfilesDashboardKey" } }
+end
+
+local function decorate_input(input_win, input_buf)
+  vim.wo[input_win].wrap = false
+  vim.wo[input_win].list = true
+  vim.wo[input_win].listchars = "precedes:…,extends:…"
+  vim.wo[input_win].sidescrolloff = 0
+  vim.api.nvim_buf_set_extmark(input_buf, ns, 0, 0, {
+    virt_text = { { "❯ ", "DotfilesDashboardKey" } },
+    virt_text_pos = "inline",
+    right_gravity = false, -- keep the prompt before text inserted at column zero
+  })
 end
 
 local function edit(path)
@@ -78,11 +173,109 @@ local function edit(path)
 end
 
 local function new_file()
-  vim.ui.input({ prompt = "New file: " }, function(name)
-    if name ~= nil and name ~= "" then
+  local parent = vim.api.nvim_get_current_win()
+  local input_buf = vim.api.nvim_create_buf(false, true)
+  local cwd = display_path(vim.fn.getcwd())
+  if cwd:sub(-1) ~= "/" then
+    cwd = cwd .. "/"
+  end
+  local group = vim.api.nvim_create_augroup("dotfiles.dashboard.new_file." .. input_buf, { clear = true })
+  local input_win, closed = nil, false
+
+  local function footer(width)
+    local full = {
+      { "Enter", "DotfilesDashboardKey" },
+      { " create  ", "DotfilesDashboardPickerFooter" },
+      { "Esc", "DotfilesDashboardKey" },
+      { " cancel", "DotfilesDashboardPickerFooter" },
+    }
+    local compact = {
+      { "Enter", "DotfilesDashboardKey" },
+      { "  ", "DotfilesDashboardPickerFooter" },
+      { "Esc", "DotfilesDashboardKey" },
+    }
+    local chunks = key_footer(width, full, compact)
+    if chunks == full then
+      local cwd_width = width - chunks_width(full) - 3
+      if cwd_width >= 8 then
+        table.insert(chunks, 1, { truncate_tail(cwd, cwd_width) .. " · ", "DotfilesDashboardPickerFooter" })
+      end
+    end
+    return chunks
+  end
+
+  local function layout()
+    local width = math.max(1, math.min(60, math.floor(vim.o.columns * 0.65), vim.o.columns - 4))
+    local title = adaptive_title("󰈅", "New file", width)
+    return {
+      relative = "editor",
+      row = math.max(0, math.floor((vim.o.lines - 5) / 2)),
+      col = math.max(0, math.floor((vim.o.columns - width) / 2)),
+      width = width,
+      height = 1,
+      title = title,
+      title_pos = "center",
+      footer = footer(width),
+      footer_pos = "center",
+    }
+  end
+
+  local function close()
+    if closed then
+      return
+    end
+    closed = true
+    vim.cmd.stopinsert()
+    vim.api.nvim_del_augroup_by_id(group)
+    if input_win and vim.api.nvim_win_is_valid(input_win) then
+      vim.api.nvim_win_close(input_win, true)
+    end
+    if vim.api.nvim_win_is_valid(parent) then
+      vim.api.nvim_set_current_win(parent)
+    end
+  end
+
+  local function confirm()
+    if closed then
+      return
+    end
+    local name = vim.api.nvim_buf_get_lines(input_buf, 0, 1, false)[1] or ""
+    close()
+    if name ~= "" then
       edit(name)
     end
-  end)
+  end
+
+  local config = layout()
+  config.style = "minimal"
+  config.border = "rounded"
+  config.zindex = 61
+  input_win = vim.api.nvim_open_win(input_buf, true, config)
+  vim.wo[input_win].winhighlight = FLOAT_WINHIGHLIGHT
+  vim.bo[input_buf].bufhidden = "wipe"
+  decorate_input(input_win, input_buf)
+
+  local opts = { buffer = input_buf, nowait = true, silent = true }
+  for _, mode in ipairs({ "i", "n" }) do
+    vim.keymap.set(mode, "<CR>", confirm, opts)
+    vim.keymap.set(mode, "<Esc>", close, opts)
+    vim.keymap.set(mode, "<C-c>", close, opts)
+  end
+  vim.api.nvim_create_autocmd("VimResized", {
+    group = group,
+    callback = function()
+      if not closed and vim.api.nvim_win_is_valid(input_win) then
+        vim.api.nvim_win_set_config(input_win, layout())
+      end
+    end,
+  })
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = group,
+    pattern = tostring(input_win),
+    once = true,
+    callback = close,
+  })
+  vim.cmd("startinsert!")
 end
 
 local FIND_FILE_LIMIT = 2000
@@ -102,21 +295,22 @@ local FILE_ICONS = {
   tsx = "", xml = "󰗀", yaml = "", yml = "",
 }
 
+local CODE_EXTENSIONS = {
+  c = true, cpp = true, fish = true, go = true, h = true, js = true,
+  lua = true, nu = true, py = true, rs = true, sh = true, ts = true, tsx = true,
+}
+local MARKUP_EXTENSIONS = { css = true, html = true, md = true, xml = true }
+local CONFIG_EXTENSIONS = { json = true, jsonc = true, toml = true, yaml = true, yml = true }
+
 local function file_icon(path)
   local extension = path:match("%.([^.]+)$")
-  return (extension and FILE_ICONS[extension:lower()]) or "󰈔"
-end
-
--- Keep the informative tail when a label does not fit.
-local function truncate_tail(text, width)
-  if vim.fn.strdisplaywidth(text) <= width then
-    return text
-  end
-  local start = 0
-  while vim.fn.strdisplaywidth(vim.fn.strcharpart(text, start)) > width - 1 do
-    start = start + 1
-  end
-  return "…" .. vim.fn.strcharpart(text, start)
+  extension = extension and extension:lower() or ""
+  local icon = FILE_ICONS[extension] or "󰈔"
+  local highlight = CODE_EXTENSIONS[extension] and "DotfilesDashboardPickerIconCode"
+    or (MARKUP_EXTENSIONS[extension] and "DotfilesDashboardPickerIconMarkup")
+    or (CONFIG_EXTENSIONS[extension] and "DotfilesDashboardPickerIconConfig")
+    or "DotfilesDashboardPickerIcon"
+  return icon, highlight
 end
 
 local function matches_filter(path, query)
@@ -138,16 +332,75 @@ local function open_file_picker(files, title, on_choice)
   local parent = vim.api.nvim_get_current_win()
   local input_buf = vim.api.nvim_create_buf(false, true)
   local list_buf = vim.api.nvim_create_buf(false, true)
-  local width = math.max(20, math.min(100, math.floor(vim.o.columns * 0.65)))
-  width = math.min(width, math.max(20, vim.o.columns - 4))
-  local height = math.min(PICKER_HEIGHT, math.max(1, vim.o.lines - 10))
-  local top = math.max(0, math.floor((vim.o.lines - height - 5) / 2) - 1)
-  local left = math.max(0, math.floor((vim.o.columns - width) / 2))
+  local group = vim.api.nvim_create_augroup("dotfiles.dashboard.picker." .. input_buf, { clear = true })
   local filtered, input_win, list_win = {}, nil, nil
+  local displayed_count = #files
   local closed = false
 
+  local function footer(width)
+    return key_footer(width, {
+      { "C-n/p", "DotfilesDashboardKey" },
+      { " move  ", "DotfilesDashboardPickerFooter" },
+      { "Enter", "DotfilesDashboardKey" },
+      { " open  ", "DotfilesDashboardPickerFooter" },
+      { "Esc", "DotfilesDashboardKey" },
+      { " close", "DotfilesDashboardPickerFooter" },
+    }, {
+      { "C-n/p", "DotfilesDashboardKey" },
+      { "  ", "DotfilesDashboardPickerFooter" },
+      { "Enter", "DotfilesDashboardKey" },
+      { "  ", "DotfilesDashboardPickerFooter" },
+      { "Esc", "DotfilesDashboardKey" },
+    })
+  end
+
+  local function count_title(width)
+    if vim.o.lines < 6 then
+      return ""
+    end
+    local text = (" %d/%d "):format(displayed_count, #files)
+    if vim.fn.strdisplaywidth(text) > width then
+      return ""
+    end
+    return { { text, "DotfilesDashboardPickerCount" } }
+  end
+
+  local function layout()
+    local width = math.max(1, math.min(100, math.floor(vim.o.columns * 0.65), vim.o.columns - 4))
+    local bordered = vim.o.lines >= 6
+    local height = bordered and math.min(PICKER_HEIGHT, math.max(1, vim.o.lines - 10))
+      or math.min(PICKER_HEIGHT, math.max(1, vim.o.lines - 2))
+    local total_height = height + (bordered and 5 or 1)
+    local top = math.max(0, math.floor((vim.o.lines - total_height) / 2))
+    local left = math.max(0, math.floor((vim.o.columns - width) / 2))
+    local border = bordered and "rounded" or "none"
+    return {
+      relative = "editor",
+      row = top,
+      col = left,
+      width = width,
+      height = 1,
+      border = border,
+      title = bordered and adaptive_title("󰍉", title, width) or "",
+      title_pos = "center",
+      zindex = 61,
+    }, {
+      relative = "editor",
+      row = top + (bordered and 3 or 1),
+      col = left,
+      width = width,
+      height = height,
+      border = border,
+      title = bordered and count_title(width) or "",
+      title_pos = "center",
+      footer = bordered and footer(width) or "",
+      footer_pos = "center",
+      zindex = 60,
+    }
+  end
+
   local function render()
-    if closed then
+    if closed or not vim.api.nvim_win_is_valid(list_win) then
       return
     end
     local query = table.concat(vim.api.nvim_buf_get_lines(input_buf, 0, -1, false), " ")
@@ -157,25 +410,46 @@ local function open_file_picker(files, title, on_choice)
         filtered[#filtered + 1] = path
       end
     end
+    displayed_count = #filtered
 
+    local width = vim.api.nvim_win_get_config(list_win).width
     local lines, marks = {}, {}
     for i, path in ipairs(filtered) do
-      local icon = file_icon(path)
-      local display = vim.fn.fnamemodify(path, ":~"):gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\t", "\\t")
-      display = truncate_tail(display, width - 6)
+      local icon, icon_highlight = file_icon(path)
+      local path_width = math.max(1, width - vim.fn.strdisplaywidth(icon) - 3)
+      local display = truncate_tail(display_path(path), path_width)
       lines[i] = " " .. icon .. " " .. display .. " "
       local path_col = #icon + 2
-      marks[#marks + 1] = { row = i - 1, col = 1, stop = #icon + 1, hl = "DotfilesDashboardPickerIcon" }
-      marks[#marks + 1] = {
-        row = i - 1,
-        col = path_col,
-        stop = path_col + #display,
-        hl = "DotfilesDashboardPickerPath",
-      }
+      marks[#marks + 1] = { row = i - 1, col = 1, stop = #icon + 1, hl = icon_highlight }
+      local slash = display:match("^.*()/")
+      if slash then
+        marks[#marks + 1] = {
+          row = i - 1,
+          col = path_col,
+          stop = path_col + slash,
+          hl = "DotfilesDashboardPickerDirectory",
+        }
+        if slash < #display then
+          marks[#marks + 1] = {
+            row = i - 1,
+            col = path_col + slash,
+            stop = path_col + #display,
+            hl = "DotfilesDashboardPickerPath",
+          }
+        end
+      else
+        marks[#marks + 1] = {
+          row = i - 1,
+          col = path_col,
+          stop = path_col + #display,
+          hl = "DotfilesDashboardPickerPath",
+        }
+      end
     end
     if #filtered == 0 then
-      lines = { "  No matching files " }
-      marks = { { row = 0, col = 2, stop = 19, hl = "DotfilesDashboardSubtitle" } }
+      local message = truncate_head("No matching files", math.max(1, width - 2))
+      lines = { " " .. message .. " " }
+      marks = { { row = 0, col = 1, stop = 1 + #message, hl = "DotfilesDashboardSubtitle" } }
     end
 
     vim.bo[list_buf].modifiable = true
@@ -190,9 +464,10 @@ local function open_file_picker(files, title, on_choice)
     end
 
     vim.api.nvim_win_set_config(list_win, {
-      title = (" %d/%d "):format(#filtered, #files),
+      title = count_title(width),
       title_pos = "center",
     })
+    vim.wo[list_win].cursorline = #filtered > 0
     local row = math.max(1, math.min(vim.api.nvim_win_get_cursor(list_win)[1], #filtered))
     vim.api.nvim_win_set_cursor(list_win, { row, 0 })
   end
@@ -203,10 +478,11 @@ local function open_file_picker(files, title, on_choice)
     end
     closed = true
     vim.cmd.stopinsert()
-    if vim.api.nvim_win_is_valid(input_win) then
+    vim.api.nvim_del_augroup_by_id(group)
+    if input_win and vim.api.nvim_win_is_valid(input_win) then
       vim.api.nvim_win_close(input_win, true)
     end
-    if vim.api.nvim_win_is_valid(list_win) then
+    if list_win and vim.api.nvim_win_is_valid(list_win) then
       vim.api.nvim_win_close(list_win, true)
     end
     if vim.api.nvim_win_is_valid(parent) then
@@ -214,6 +490,9 @@ local function open_file_picker(files, title, on_choice)
     end
   end
   local function choose()
+    if closed or not vim.api.nvim_win_is_valid(list_win) then
+      return
+    end
     local choice = filtered[vim.api.nvim_win_get_cursor(list_win)[1]]
     if not choice then
       return
@@ -234,46 +513,18 @@ local function open_file_picker(files, title, on_choice)
     vim.cmd("startinsert!")
   end
 
-  input_win = vim.api.nvim_open_win(input_buf, true, {
-    relative = "editor",
-    row = top,
-    col = left,
-    width = width,
-    height = 1,
-    style = "minimal",
-    border = "rounded",
-    title = " 󰍉 " .. title .. " ",
-    title_pos = "center",
-    zindex = 61,
-  })
-  list_win = vim.api.nvim_open_win(list_buf, false, {
-    relative = "editor",
-    row = top + 3,
-    col = left,
-    width = width,
-    height = height,
-    title = (" %d/%d "):format(#files, #files),
-    title_pos = "center",
-    style = "minimal",
-    border = "rounded",
-    footer = " C-n/p move   Enter open   Esc close ",
-    footer_pos = "center",
-    zindex = 60,
-  })
-  local winhighlight = table.concat({
-    "Normal:DotfilesDashboardPickerNormal",
-    "NormalFloat:DotfilesDashboardPickerNormal",
-    "FloatBorder:DotfilesDashboardPickerBorder",
-    "FloatTitle:DotfilesDashboardPickerTitle",
-    "FloatFooter:DotfilesDashboardPickerFooter",
-    "CursorLine:DotfilesDashboardPickerSelection",
-  }, ",")
-  vim.wo[input_win].winhighlight = winhighlight
-  vim.wo[list_win].winhighlight = winhighlight
+  local input_config, list_config = layout()
+  input_config.style = "minimal"
+  list_config.style = "minimal"
+  input_win = vim.api.nvim_open_win(input_buf, true, input_config)
+  list_win = vim.api.nvim_open_win(list_buf, false, list_config)
+  vim.wo[input_win].winhighlight = FLOAT_WINHIGHLIGHT
+  vim.wo[list_win].winhighlight = PICKER_WINHIGHLIGHT
   vim.wo[list_win].cursorline = true
   vim.wo[list_win].fillchars = "eob: "
   vim.bo[input_buf].bufhidden = "wipe"
   vim.bo[list_buf].bufhidden = "wipe"
+  decorate_input(input_win, input_buf)
 
   local input_opts = { buffer = input_buf, nowait = true, silent = true }
   for _, mode in ipairs({ "i", "n" }) do
@@ -298,8 +549,27 @@ local function open_file_picker(files, title, on_choice)
   vim.keymap.set("n", "<Up>", function() move(-1) end, list_opts)
 
   vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+    group = group,
     buffer = input_buf,
     callback = render,
+  })
+  vim.api.nvim_create_autocmd("VimResized", {
+    group = group,
+    callback = function()
+      if closed or not vim.api.nvim_win_is_valid(input_win) or not vim.api.nvim_win_is_valid(list_win) then
+        return
+      end
+      local input_config, list_config = layout()
+      vim.api.nvim_win_set_config(input_win, input_config)
+      vim.api.nvim_win_set_config(list_win, list_config)
+      render()
+    end,
+  })
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = group,
+    pattern = { tostring(input_win), tostring(list_win) },
+    once = true,
+    callback = close,
   })
   render()
   vim.cmd("startinsert!")
@@ -417,30 +687,67 @@ local function recent_files()
 end
 
 local menu = {
-  { icon = "󰈅", label = "New file", key = "n", action = new_file },
-  { icon = "󰍉", label = "Find file", key = "f", action = find_file },
-  { icon = "󰋚", label = "Recent files", key = "r", action = recent_files },
-  { icon = "󰒓", label = "Open config", key = "c", action = function() edit(vim.fn.stdpath("config") .. "/init.lua") end },
-  { icon = "󰐥", label = "Quit", key = "q", action = function() vim.cmd.quit() end },
+  { icon = "󰈅", label = "New file", key = "n", action = new_file, hl = "DotfilesDashboardIcon" },
+  { icon = "󰍉", label = "Find file", key = "f", action = find_file, hl = "DotfilesDashboardFindIcon" },
+  { icon = "󰋚", label = "Recent files", key = "r", action = recent_files, hl = "DotfilesDashboardRecentIcon" },
+  { icon = "󰒓", label = "Open config", key = "c", action = function() edit(vim.fn.stdpath("config") .. "/init.lua") end, hl = "DotfilesDashboardConfigIcon" },
+  { icon = "󰐥", label = "Quit", key = "q", action = function() vim.cmd.quit() end, hl = "DotfilesDashboardMutedIcon" },
 }
 
-local function subtitle()
-  local text = ("v%s · %s"):format(tostring(vim.version()), vim.fn.fnamemodify(vim.fn.getcwd(), ":~"))
-  return truncate_tail(text, BLOCK_WIDTH)
+local function subtitle(width)
+  local version = "v" .. tostring(vim.version())
+  local text = version .. " · " .. display_path(vim.fn.getcwd())
+  if vim.fn.strdisplaywidth(text) > width then
+    return { { truncate_tail(text, width), "DotfilesDashboardSubtitle" } }
+  end
+  return {
+    { version, "DotfilesDashboardVersion" },
+    { text:sub(#version + 1), "DotfilesDashboardSubtitle" },
+  }
 end
 
-local function menu_rows()
+local function compact_menu_row(width)
+  local spans = {}
+  local used = 0
+  for i, item in ipairs(menu) do
+    local separator = i > 1 and " " or ""
+    if used + #separator + vim.fn.strdisplaywidth(item.key) > width then
+      break
+    end
+    spans[#spans + 1] = { separator, "DotfilesDashboardLabel" }
+    spans[#spans + 1] = { item.key, "DotfilesDashboardKey" }
+    used = used + #separator + vim.fn.strdisplaywidth(item.key)
+  end
+  return spans
+end
+
+local function menu_rows(block_width)
   local rows = {}
   for _, item in ipairs(menu) do
-    local used = 4 + vim.fn.strdisplaywidth(item.icon) + 2 + vim.fn.strdisplaywidth(item.label)
-    local gap = math.max(1, BLOCK_WIDTH - used - 1) -- key sits on the block's right edge
-    rows[#rows + 1] = {
-      { string.rep(" ", 4), "DotfilesDashboardLabel" },
-      { item.icon, "DotfilesDashboardIcon" },
-      { "  " .. item.label, "DotfilesDashboardLabel" },
-      { string.rep(" ", gap), "DotfilesDashboardLabel" },
-      { item.key, "DotfilesDashboardKey" },
-    }
+    if block_width >= 10 then
+      local indent = block_width >= BLOCK_WIDTH and 4 or (block_width >= 20 and 2 or 0)
+      local icon_width = vim.fn.strdisplaywidth(item.icon)
+      local label = truncate_head(item.label, block_width - indent - icon_width - 5)
+      local used = indent + icon_width + 1 + vim.fn.strdisplaywidth(label)
+      local gap = math.max(1, block_width - used - 3)
+      rows[#rows + 1] = {
+        { string.rep(" ", indent), "DotfilesDashboardLabel" },
+        { item.icon, item.hl },
+        { " " .. label, "DotfilesDashboardLabel" },
+        { string.rep(" ", gap), "DotfilesDashboardLabel" },
+        { "[", "DotfilesDashboardRule" },
+        { item.key, "DotfilesDashboardKey" },
+        { "]", "DotfilesDashboardRule" },
+      }
+    elseif block_width >= 3 then
+      rows[#rows + 1] = {
+        { item.icon, item.hl },
+        { " ", "DotfilesDashboardLabel" },
+        { item.key, "DotfilesDashboardKey" },
+      }
+    else
+      rows[#rows + 1] = { { item.key, "DotfilesDashboardKey" } }
+    end
   end
   return rows
 end
@@ -453,18 +760,55 @@ local function render()
     return
   end
 
-  local rows = {}
-  for i, line in ipairs(banner) do
-    rows[#rows + 1] = { { line, "DotfilesDashboardBanner" .. i } }
-  end
-  rows[#rows + 1] = {}
-  rows[#rows + 1] = { { subtitle(), "DotfilesDashboardSubtitle" } }
-  rows[#rows + 1] = { { string.rep("─", BLOCK_WIDTH), "DotfilesDashboardRule" } }
-  rows[#rows + 1] = {}
-  vim.list_extend(rows, menu_rows())
-
   local width = vim.api.nvim_win_get_width(win)
   local height = vim.api.nvim_win_get_height(win)
+  local block_width = math.min(BLOCK_WIDTH, width)
+  local rows = {}
+  if width >= BLOCK_WIDTH and height >= 15 then
+    for i, line in ipairs(banner) do
+      rows[#rows + 1] = { { line, "DotfilesDashboardBanner" .. i } }
+    end
+    rows[#rows + 1] = {}
+    rows[#rows + 1] = subtitle(block_width)
+    rows[#rows + 1] = { { string.rep("─", BLOCK_WIDTH), "DotfilesDashboardRule" } }
+    rows[#rows + 1] = {}
+    vim.list_extend(rows, menu_rows(block_width))
+  else
+    local logo = {
+      { "N", "DotfilesDashboardBanner2" },
+      { "V", "DotfilesDashboardBanner3" },
+      { "I", "DotfilesDashboardBanner4" },
+      { "M", "DotfilesDashboardBanner5" },
+    }
+    rows[#rows + 1] = vim.list_slice(logo, 1, math.min(#logo, block_width))
+    if height <= 5 then
+      if height == 2 then
+        rows[#rows + 1] = compact_menu_row(block_width)
+      elseif height == 3 then
+        rows[#rows + 1] = subtitle(block_width)
+        rows[#rows + 1] = compact_menu_row(block_width)
+      elseif height >= 4 then
+        rows[#rows + 1] = subtitle(block_width)
+        rows[#rows + 1] = { { string.rep("─", block_width), "DotfilesDashboardRule" } }
+        if height == 5 then
+          rows[#rows + 1] = {}
+        end
+        rows[#rows + 1] = compact_menu_row(block_width)
+      end
+    else
+      if height >= 7 then
+        rows[#rows + 1] = subtitle(block_width)
+      end
+      if height >= 9 then
+        rows[#rows + 1] = { { string.rep("─", block_width), "DotfilesDashboardRule" } }
+      end
+      if height >= 10 then
+        rows[#rows + 1] = {}
+      end
+      vim.list_extend(rows, menu_rows(block_width))
+    end
+  end
+
   local top = math.max(0, math.floor((height - #rows) / 2))
 
   local lines, marks = {}, {}
