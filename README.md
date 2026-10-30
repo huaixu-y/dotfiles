@@ -35,10 +35,10 @@ Editors share the **Catppuccin** (Mocha) theme.
 
 ## Requirements
 
-- Nushell, Starship, tmux, Helix, Neovim ≥ 0.12, fastfetch
+- fish, Nushell, Starship, tmux, Helix, Neovim ≥ 0.12, fastfetch, Kitty
 - LSP servers on `PATH`: `pyright-langserver`, `rust-analyzer`, `clangd`
 - Wayland clipboard: `wl-copy` (for tmux copy mode)
-- Optional: fd or ripgrep for faster Dashboard file searches; btop and lazygit for tmux popups (yazi benefits from the tmux `allow-passthrough` setting for image previews)
+- Optional: Yazi (tmux command-menu entry and image previews via tmux `allow-passthrough`); fd or ripgrep for faster Dashboard file searches; btop and lazygit for tmux popups
 
 ## Installation
 
