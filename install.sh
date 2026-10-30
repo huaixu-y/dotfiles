@@ -10,7 +10,7 @@ CONFIG_HOME="$HOME/.config"
 BACKUP_SUFFIX=".bak.$(date +%Y%m%d%H%M%S)"
 KEEP_BACKUPS=3
 
-TOOLS=(fastfetch fish kitty nushell nvim tmux yazi)
+TOOLS=(fastfetch fish ghostty kitty nushell nvim tmux yazi)
 
 mkdir -p "$CONFIG_HOME"
 

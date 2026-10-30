@@ -1,0 +1,10 @@
+font-family = Cascadia Code NF
+font-size = 11
+
+command = fish
+
+background-opacity = 0.9
+background-opacity-cells = true
+background-blur = 64
+
+theme = Catppuccin Mocha
