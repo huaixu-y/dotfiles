@@ -5,6 +5,6 @@ command = fish
 
 background-opacity = 0.9
 background-opacity-cells = true
-background-blur = 64
+background-blur = true
 
 theme = Catppuccin Mocha
