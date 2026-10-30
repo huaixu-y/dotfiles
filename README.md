@@ -67,3 +67,15 @@ Notes:
 - Helix: `hx --health`
 - Neovim: `nvim --headless -u NONE '+lua assert(loadfile("nvim/init.lua"))' +qa` (syntax check)
 - fastfetch: run `fastfetch`
+
+## Documentation checks
+
+This file is the single source of truth for repository structure, tool behavior, dependencies, installation, deployment, and verification. `AGENTS.md` contains only agent-specific workflows and editing constraints.
+
+Review configuration changes against both `README.md` and `AGENTS.md`, and keep applicable documentation updates in the same commit. Enable the versioned Git hooks once after cloning:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+The pre-commit hook requires both documents to be staged when tool configurations or `install.sh` change. If a review confirms that the documentation is unaffected, use `SKIP_DOCS_CHECK=1 git commit` and explain why in the commit message.

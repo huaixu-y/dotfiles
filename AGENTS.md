@@ -1,73 +1,28 @@
 # AGENTS.md
 
-## Project overview
+## Project scope
 
-This is a personal **dotfiles repository** (`huaixu-y/dotfiles` on GitHub, branch `main`). It is not a buildable software project — there is no package manifest (`pyproject.toml`, `package.json`, `Cargo.toml`, etc.), no build system, no test suite, and no CI. Each top-level directory holds the configuration for one tool, laid out to mirror its location under `~/.config/`:
+This is the personal **dotfiles repository** `huaixu-y/dotfiles` (GitHub, branch `main`). It has no package manifest, build system, automated test suite, or CI.
 
-```
-fastfetch/config.jsonc   -> ~/.config/fastfetch/config.jsonc
-fish/config.fish         -> ~/.config/fish/config.fish
-helix/config.toml        -> ~/.config/helix/config.toml
-kitty/kitty.conf         -> ~/.config/kitty/kitty.conf
-kitty/themes/mocha.conf  -> ~/.config/kitty/themes/mocha.conf
-nushell/config.nu        -> ~/.config/nushell/config.nu
-nushell/env.nu           -> ~/.config/nushell/env.nu
-nvim/init.lua            -> ~/.config/nvim/init.lua
-nvim/lua/dashboard.lua   -> ~/.config/nvim/lua/dashboard.lua
-tmux/tmux.conf           -> ~/.config/tmux/tmux.conf
-yazi/theme.toml          -> ~/.config/yazi/theme.toml
-yazi/catppuccin-mocha.tmTheme -> ~/.config/yazi/catppuccin-mocha.tmTheme
-```
+`README.md` is the single source of truth for repository structure, tool behavior, dependencies, installation, deployment, and per-tool verification. Read the relevant sections before making changes. Do not duplicate those details here; update the README when they change.
 
-The `install.sh` bootstrap script symlinks each tool directory into `~/.config/` (idempotent; existing entries are backed up as `*.bak.<timestamp>` before linking, and old backups are pruned, keeping the 3 most recent per tool). Helix is excluded from `TOOLS`: its config stays in the repo but must be symlinked manually. Custom `XDG_CONFIG_HOME` locations are intentionally unsupported because Yazi's syntax theme uses a static absolute path. The tmux config references `~/.config/tmux/tmux.conf` in its reload binding, confirming that layout.
+## Working on changes
 
-## Technology stack
+- **Make minimal, focused changes.** Commit history uses small single-purpose commits, optionally prefixed with the tool name (`tmux: ...`).
+- Validate each affected tool using the commands in `README.md`; there is no repository-wide build or test command.
+- Keep documentation synchronized with configuration changes in the same commit. Update `README.md` for user-facing behavior, dependencies, installation, usage, or verification changes; update this file only for agent workflows, constraints, or editing rules.
+- Before finishing, review `git diff` against both documents. Configuration commits should include both documents, or explicitly explain why either document intentionally needs no update. Use `SKIP_DOCS_CHECK=1` only after that review.
+- Never describe documentation or validation as completed without actually checking it.
 
-Configurations for a terminal-based Linux (Wayland) workflow:
+## Editing constraints
 
-- **fish** — the primary shell, first in the tmux auto-detect order. `config.fish` initializes the Starship prompt (skipped when not installed), disables the welcome greeting, aliases `ft` to `fastfetch` and `vim` to `nvim`, and sets `EDITOR=nvim` when installed. Completions for `gc` and `gitcode` are machine-local and git-ignored. The cargo env is left to rustup's own `conf.d/rustup.fish` drop-in (git-ignored). `fish/fish_variables` is machine-local state and git-ignored.
-- **Nushell** — the secondary shell. `config.nu` initializes the Starship prompt (regenerating `starship.nu` into `$nu.data-dir/vendor/autoload` on every startup), hides the banner, aliases `ft` to `fastfetch` and `vim` to `nvim`, and sources `~/.cargo/env.nu`. `env.nu` currently only sets `$env.EDITOR` to `nvim` when it is installed. `nushell/history.txt` is machine-local and git-ignored (by the repo-root `.gitignore`).
-- **tmux** — prefix is `C-Space` (not the default `C-b`), default shell is auto-detected at server start via `run-shell` + `command -v` (fish → nu → zsh, falling back to `/bin/sh` so panes still spawn when none are present), mouse on, 1-based indexing, 10ms escape-time, 10000-line history limit, extended keys (CSI-u), `set-clipboard on` (OSC 52), `detach-on-destroy off`, `aggressive-resize on`, `allow-passthrough` for Yazi image previews (Kitty protocol), Alt-hjkl pane navigation, vi copy mode piping to `wl-copy` (Wayland; macOS `pbcopy` and X11 `xclip` alternatives are kept commented out), and several `display-popup` bindings (`C-p` shell, `g` lazygit, `v` nvim, `/` command menu with btop/lazygit/nvim entries) at 90% size. True color (the `*:RGB` terminal feature) and focus events are enabled.
-- **Helix** — `catppuccin_mocha` theme, relative line numbers, mouse disabled, cursor shapes per mode, soft-wrap enabled with the wrap indicator hidden (`wrap-indicator = ""`). The runtime lives at the default location `~/.config/helix/runtime` — which resolves into this repo because `~/.config/helix` is a symlink to `helix/` here — and is git-ignored (`helix/runtime`).
-- **Neovim** (0.12+) — `init.lua` sets the catppuccin theme (mocha) via the `catppuccin/nvim` plugin installed with `vim.pack`, and enables LSP for Python (`pyright`), Rust (`rust_analyzer`) and C/C++ (`clangd`) using the built-in `vim.lsp.config`/`vim.lsp.enable` with hand-written server configs — no `nvim-lspconfig` and no `require('lspconfig')` (deprecated).
-  - Auto-completion uses the built-in `vim.lsp.completion`: `autotrigger = true` (server trigger characters) plus an `InsertCharPre` autocmd that calls `vim.lsp.completion.get()` starting from the 2nd keyword character of a word.
-  - Popup interaction: `Tab`/`S-Tab` cycle items, `Enter` confirms the selected item (`C-y`) but inserts a plain newline when the menu is open with nothing selected; `completeopt` keeps `noselect`.
-  - `mapleader` is Space; the same `LspAttach` autocmd adds buffer-local mappings (`gd` definition, `gD` declaration, `<leader>lf` format — buffer or visual selection, `<leader>ld` diagnostics) on top of Neovim's built-in `gr*` LSP defaults.
-  - Diagnostics show errors inline (`virtual_text` filtered to `severity = ERROR`; other severities keep the 0.12 default signs + underline), with `severity_sort` enabled via `vim.diagnostic.config`. The sign column is always shown and floating windows use rounded borders (`winborder`).
-  - Line numbers are hybrid relative; indentation is 4 spaces. Server executables must be on `PATH` (`pyright-langserver`, `rust-analyzer`, `clangd`).
-  - Neovim UI messages are forced to English with `:language messages C` at the top of `init.lua`, because the system locale (`zh_CN.UTF-8`) otherwise selects the Chinese catalog and gettext binds it before `init.lua` runs (so `vim.env` cannot be used).
-  - The start page (`nvim/lua/dashboard.lua`, required from `init.lua`, no plugin) renders the banner/menu into the untouched empty buffer on a bare launch and drops itself (buffer wiped, window options restored) once a file is opened; it is skipped when files, `-c`/`+cmd`, stdin (`-`) or a session are given, or when `vim.g.dotfiles_dashboard_skip = 1`.
-  - File search is asynchronous, using fd, ripgrep, or Git with a scheduled native fallback that prunes ignored directories. Find and recent files share a centered Catppuccin floating picker with file icons and a live filter input.
-- **fastfetch** — JSONC module list with the official JSON schema referenced via `$schema`.
-- **Yazi** — Catppuccin Mocha theme (vendored from [catppuccin/yazi](https://github.com/catppuccin/yazi), lavender accent) with the matching syntax-highlighting theme from [catppuccin/bat](https://github.com/catppuccin/bat).
-- **Kitty** — Cascadia Code NF (Nerd Font) with auto-detected bold/italic via fontconfig, `shell fish`, hidden Wayland titlebar only (`titlebar-only`, keeps the window shadow for resizing), `background_opacity 0.9` with `background_blur 64` (works on COSMIC via `org.kde.KWin.Blur`), and the Catppuccin Mocha theme vendored from [catppuccin/kitty](https://github.com/catppuccin/kitty) (`include themes/mocha.conf`).
+- Keep platform-specific alternatives as commented-out lines rather than deleting them.
+- Write all comments and documentation in English. Keep comments sparse and explain only non-obvious reasons, workarounds, pitfalls, or external requirements.
+- Use each tool's native format and preserve existing indentation (2-space in JSONC/Lua-ish files, none in tmux.conf).
+- Manage Neovim plugins with the built-in **`vim.pack`** (Neovim 0.12+). Do not introduce external plugin managers unless explicitly requested.
+- Do not commit machine-local state; existing exclusions belong in `.gitignore`.
 
-Consistent theme choice across editors: **Catppuccin** (Mocha).
+## Security
 
-## Build, test, and deployment
-
-- Nothing to build and no tests to run.
-- Verify changes by reloading the affected tool:
-  - tmux: `tmux source-file ~/.config/tmux/tmux.conf` (or prefix + `r`); check syntax with `tmux source-file` from a running server.
-  - Nushell: start a new `nu` session or `source` the file; note `config.nu` executes `starship init nu` and `mkdir` at load time.
-  - fish: `fish -n ~/.config/fish/config.fish` (syntax check) or start a new `fish` session.
-  - Helix: run `hx --health` to validate config and runtime paths.
-  - Neovim: check Lua syntax with `nvim --headless -u NONE '+lua assert(loadfile("nvim/init.lua"))' +qa`; note the first real launch clones `vim.pack` plugins (needs network).
-  - fastfetch: run `fastfetch` to validate the JSONC.
-  - kitty: start a new kitty instance, or validate parsing with `kitty +runpy 'from kitty.config import load_config; load_config("~/.config/kitty/kitty.conf")'`.
-- Deployment = run `./install.sh` to symlink every tool directory except `helix/` into `~/.config/`, or copy/symlink manually per file.
-
-## Conventions for editing
-
-- **Make minimal, focused changes.** Commit history shows small single-purpose commits (e.g. "tmux: add Alt-hjkl pane navigation bindings"); match that style — optionally prefix commit subjects with the tool name (`tmux: ...`).
-- Keep platform-specific alternatives as commented-out lines rather than deleting them (see the clipboard bindings in `tmux/tmux.conf`).
-- Do not commit `nushell/history.txt` (git-ignored).
-- All comments and documentation are in English; write new comments in English.
-- Keep comments sparse: only explain non-obvious *why* (workarounds, surprising defaults, pitfalls, external requirements). Never add comments that restate what the code already says (e.g. `-- go to definition` above `vim.lsp.buf.definition`).
-- File formats: use each tool's native format (TOML for Helix, JSONC for fastfetch, Nushell script, Lua for Neovim, tmux config syntax) and preserve existing indentation (2-space in JSONC/Lua-ish files, none in tmux.conf).
-- Neovim plugins are managed with the built-in **`vim.pack`** (Neovim 0.12+) by default — do not introduce external plugin managers (lazy.nvim, packer, etc.) unless explicitly requested.
-
-## Security considerations
-
-- This repo is pushed to a personal GitHub remote over SSH. It contains only program configuration — **never commit secrets, tokens, or machine-local data** (shell history is already ignored).
-- Be careful with absolute paths embedded in configs (e.g. `~/.cargo/env.nu`): they reflect the owner's machine and should stay parameterized by `$HOME`/`$nu.home-dir` where the config language allows.
+- Never commit secrets, tokens, or machine-local data.
+- Keep absolute paths parameterized by `$HOME`, `$nu.home-dir`, or the equivalent when the configuration language allows.
