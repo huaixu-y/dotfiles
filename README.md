@@ -37,14 +37,32 @@ Editors share the **Catppuccin** (Mocha) theme.
 
 ## Requirements
 
-- fish, Nushell, Starship, tmux, Helix, Neovim ≥ 0.12, fastfetch, Ghostty or Kitty
+- fish, Nushell, Starship, tmux, Neovim ≥ 0.12, fastfetch, Ghostty or Kitty
 - LSP servers on `PATH`: `pyright-langserver`, `rust-analyzer`, `clangd`
 - Wayland clipboard: `wl-copy` (for tmux copy mode)
 - Optional: Yazi (tmux command-menu entry and image previews via tmux `allow-passthrough`); fd or ripgrep for faster Dashboard file searches; btop and lazygit for tmux popups
 
 ## Installation
 
-Run the bootstrap script to symlink every tool directory except `helix/` into `~/.config/` (idempotent; anything already at the destination is backed up as `*.bak.<timestamp>` first, and only the 3 most recent backups per tool are kept). The installer intentionally targets `~/.config`; custom `XDG_CONFIG_HOME` locations are not supported because Yazi's syntax theme uses a static absolute path:
+### Fedora
+
+On a recent Fedora installation (dnf5), run the dependency bootstrap, which installs everything above and then runs `install.sh` automatically:
+
+```sh
+./bootstrap.sh
+```
+
+It enables the `scottames/ghostty`, `lihaohong/yazi` and `dejan/lazygit` COPR repositories, installs all other tools from the official Fedora repos (including `cascadia-code-nf-fonts` for the Cascadia Code NF font), installs Starship via its official installer (not packaged in Fedora), Pyright via `npm install -g --prefix ~/.local` (user-level, no sudo; `~/.local/bin` must be on `PATH` for Neovim to find `pyright-langserver`) and rust-analyzer via `rustup component add` (installing rustup itself when missing), and warns when Neovim is older than 0.12. It is idempotent and requires `sudo`. Before changing the system it prints the installation plan (COPR repositories, dnf packages, and the Starship/Pyright/rust-analyzer actions) and asks for confirmation; pass `-y`/`--yes` to skip the prompt, which is required for non-interactive runs. Changing the login shell to fish (`chsh`) is left as an optional manual step.
+
+Pass `--skip` to exclude components by package name, plus `starship`, `pyright` and `rust-analyzer` (skips the whole rustup step); skipping `ghostty`, `yazi` or `lazygit` also skips its COPR repository. Unknown names are rejected. Config symlinking follows availability: `install.sh` skips tools whose command is not on `PATH`, so tools left uninstalled (including via `--skip`) are not configured; skipping an already-installed tool still links its config:
+
+```sh
+./bootstrap.sh --skip ghostty,kitty --skip pyright
+```
+
+### Manual deployment
+
+Run the install script to symlink every tool directory except `helix/` into `~/.config/`. Tools whose command is not on `PATH` are skipped (`nushell` is detected via `nu`); pass `--all` to link everything regardless. It is idempotent; anything already at the destination is backed up as `*.bak.<timestamp>` first, and only the 3 most recent backups per tool are kept. The installer intentionally targets `~/.config`; custom `XDG_CONFIG_HOME` locations are not supported because Yazi's syntax theme uses a static absolute path:
 
 ```sh
 ./install.sh
